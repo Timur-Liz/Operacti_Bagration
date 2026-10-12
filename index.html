@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Операция «Багратион» — освобождение Беларуси, 1944 | ПАТРИОТ.by</title>
+<meta name="description" content="Интерактивная карта операции «Багратион» (23 июня — 29 августа 1944): освобождение городов Беларуси, хронология наступления, мемориальный комплекс «Багратион» в Светлогорском районе.">
+
+<!-- ШРИФТЫ: Oswald — заголовки, Roboto — основной текст -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+<!-- LEAFLET.JS — интерактивная карта (единственная внешняя библиотека) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+
+<!-- СТИЛИ ПРОЕКТА — файл style.css в той же папке -->
+<link rel="stylesheet" href="style.css">
+
+<!-- СТРАХОВКА: помечаем, что JS работает. Если script.js не загрузится
+     или упадёт с ошибкой — через 1,5 с метка снимается и весь контент
+     показывается без анимаций, а на экране появляется подсказка. -->
+<script>
+document.documentElement.className += ' js';
+window.addEventListener('load', function(){
+  setTimeout(function(){
+    if (window.__BAGRATION_OK__) return;              // скрипт отработал — всё в порядке
+    document.documentElement.classList.remove('js');  // показываем все секции
+    var box = document.getElementById('jsError');
+    if (box) box.classList.add('show');
+    console.error('[Багратион] script.js не загрузился или содержит ошибку.');
+  }, 1500);
+});
+</script>
+</head>
+
+<body>
+<!-- Георгиевская лента-акцент, закреплена сверху -->
+<div class="ribbon ribbon--fixed"></div>
+
+<!-- ======================= ШАПКА ======================= -->
+<header class="nav">
+  <div class="nav__in">
+    <div class="brand">
+      <span class="star star--md" aria-hidden="true"></span>
+      <span class="brand__txt">«Багратион»<small>1944 · Беларусь</small></span>
+    </div>
+    <nav class="nav__links" aria-label="Основная навигация">
+      <a href="#map-section">Карта</a>
+      <a href="#timeline-section">Хронология</a>
+      <a href="#memorial">Мемориал</a>
+      <a href="#numbers">Цифры</a>
+      <a href="#about">Об операции</a>
+      <a href="#add-city">Дополнить карту</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<!-- ======================= HERO ======================= -->
+<section class="hero" id="hero">
+  <div class="hero__in">
+    <div class="hero__badge"><span class="star star--sm"></span>Белорусская наступательная операция</div>
+    <h1>Операция <span>«Багратион»</span></h1>
+    <div class="hero__line"></div>
+    <p class="hero__sub">23 июня — 29 августа 1944 · Освобождение Беларуси</p>
+    <p class="hero__text">
+      Одна из крупнейших наступательных операций Красной Армии за всю историю войн. За 68 дней
+      была разгромлена немецкая группа армий «Центр», освобождены Беларусь, часть Литвы и Польши.
+      Операция названа в честь полководца Отечественной войны 1812 года, генерала от инфантерии
+      Петра Ивановича Багратиона.
+    </p>
+    <div class="hero__cta">
+      <button class="btn btn--solid" data-scroll="#map-section">Начать путешествие во времени</button>
+      <button class="btn btn--ghost" data-scroll="#memorial">Мемориал «Багратион»</button>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= КАРТА ======================= -->
+<section class="section map-section" id="map-section">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="sec-head__label"><span class="star star--sm"></span>Интерактивная карта</span>
+      <h2>Путь освобождения</h2>
+      <p>Нажмите на метку города, чтобы узнать, как проходило его освобождение, и прочитать историческую справку.
+         Золотая звезда — мемориальный комплекс «Операция «Багратион»» в Светлогорском районе, месте первого прорыва.</p>
+      <div class="sec-head__rule"></div>
+    </div>
+
+    <div class="map-toolbar reveal">
+      <button class="btn" id="btnRoute">Показать маршрут</button>
+      <button class="btn btn--ghost" id="btnAll">Вся Беларусь</button>
+      <button class="btn btn--ghost" id="btnMemorial">К мемориалу</button>
+    </div>
+
+    <div class="map-wrap reveal" id="mapWrap">
+      <div id="map" role="application" aria-label="Карта освобождения Беларуси в 1944 году"></div>
+
+      <!-- Подсказка в режиме выбора координат -->
+      <div class="pick-banner" id="pickBanner">Нажмите на карту, чтобы указать координаты · Esc — отмена</div>
+      <div class="drag-hint" id="dragHint">Свою метку можно перетащить мышью в нужное место</div>
+
+      <!-- Легенда -->
+      <div class="map-legend">
+        <span><i></i>Освобождённый город</span>
+        <span><i class="g"></i>Мемориал «Багратион»</span>
+        <span><i class="u"></i>Добавлено пользователем</span>
+        <span><i class="c"></i>Из общей базы</span>
+        <span><i class="l"></i>Хронология наступления</span>
+      </div>
+
+      <!-- ВСПЛЫВАЮЩАЯ КАРТОЧКА ГОРОДА -->
+      <aside class="city-card" id="cityCard" role="dialog" aria-modal="false" aria-labelledby="ccName">
+        <div class="city-card__top">
+          <button class="cc-close" id="ccClose" aria-label="Закрыть карточку">✕</button>
+          <span class="city-card__kicker" id="ccKicker"><span class="star star--sm"></span>Освобождён</span>
+          <h3 id="ccName">Город</h3>
+          <span class="city-card__date" id="ccDate">дата</span>
+        </div>
+        <div class="city-card__body">
+          <div class="cc-block cc-anim">
+            <div class="cc-block__title"><b></b>Освобождение</div>
+            <p id="ccLib"></p>
+          </div>
+          <div class="cc-block cc-anim">
+            <div class="cc-block__title"><b></b>О городе</div>
+            <p id="ccInfo"></p>
+          </div>
+          <div class="cc-front cc-anim" id="ccFront"></div>
+        </div>
+        <!-- Панель управления своей карточкой (видна только автору) -->
+        <div class="cc-own" id="ccOwn" hidden>
+          <span class="cc-own__hint">✎ Это ваше дополнение — его можно изменить</span>
+          <div class="cc-own__row">
+            <button type="button" id="ccEdit">Редактировать</button>
+            <button type="button" id="ccMove">Переместить</button>
+            <button type="button" class="del" id="ccDelete">Удалить</button>
+          </div>
+        </div>
+        <div class="cc-nav" id="ccNav">
+          <button id="ccPrev">← Предыдущий</button>
+          <button id="ccNext">Следующий →</button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ======================= ТАЙМЛАЙН ======================= -->
+    <div class="timeline reveal" id="timeline-section">
+      <div class="timeline__head">
+        <span class="timeline__title">Хронология наступления · лето 1944</span>
+        <span class="timeline__now" id="tlNow">Выберите дату — карта перенесёт вас на место событий</span>
+      </div>
+      <div class="tl-track">
+        <div class="tl-line"></div>
+        <div class="tl-progress" id="tlProgress"></div>
+        <div class="tl-stops" id="tlStops"><!-- кнопки дат генерируются из данных --></div>
+      </div>
+      <div class="tl-controls">
+        <button class="btn btn--ghost" id="tlPrev">◀ Назад</button>
+        <button class="btn" id="tlPlay">▶ Хроника</button>
+        <button class="btn btn--ghost" id="tlNext">Вперёд ▶</button>
+        <input class="tl-range" id="tlRange" type="range" min="0" max="9" step="1" value="0" aria-label="Ползунок хронологии">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= МЕМОРИАЛ ======================= -->
+<section class="section bg-alt" id="memorial">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="sec-head__label"><span class="star star--sm"></span>Светлогорский район, д. Раковичи</span>
+      <h2>Мемориальный комплекс «Операция «Багратион»»</h2>
+      <div class="sec-head__rule"></div>
+    </div>
+
+    <div class="mem-grid">
+      <div class="mem-text reveal">
+        <p>Мемориальный комплекс расположен там, где 23–24 июня 1944 года началось то, что немецкое командование
+        считало невозможным. Войска 65-й армии генерал-лейтенанта <b>Павла Ивановича Батова</b> наступали на
+        паричском направлении — через болота, признанные противником непроходимыми для техники.</p>
+
+        <p>Сапёры и пехотинцы вручную уложили десятки километров деревянных гатей — «батовских настилов».
+        По ним прошли не только люди, но и артиллерия с танками. Удар был нанесён там, где враг не держал
+        сплошной обороны: за двое суток фронт был прорван, а спустя несколько дней в «бобруйском котле»
+        оказалась крупная группировка 9-й немецкой армии.</p>
+
+        <div class="mem-quote">«Там, где нельзя пройти, — прошли. Болото стало дорогой к освобождению Беларуси».</div>
+
+        <ul class="mem-facts">
+          <li><span class="star star--sm star--gold"></span><span><b>Точка первого прорыва.</b> Именно отсюда развивалось окружение бобруйской группировки — ключевой манёвр южного крыла операции.</span></li>
+          <li><span class="star star--sm star--gold"></span><span><b>Обновление 2026 года.</b> Комплекс реконструирован: обновлены экспозиция боевой техники, пешеходные настилы-гати, освещение и площадь торжественных церемоний.</span></li>
+          <li><span class="star star--sm star--gold"></span><span><b>Место памяти.</b> Здесь проходят митинги-реквиемы, вахты памяти и уроки мужества для школьников Гомельской области.</span></li>
+        </ul>
+
+        <button class="btn btn--solid" id="btnMemorial2">Показать на карте</button>
+      </div>
+
+      <div class="reveal">
+        <!-- Галерея строится автоматически из массива BAGRATION_DATA.memorialPhotos (файл script.js).
+             Чтобы поставить своё фото — укажите путь к файлу в поле src этого массива. -->
+        <div class="mem-gallery" id="memGallery"></div>
+        <p class="ph__note" id="memNote"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= ЦИФРЫ ======================= -->
+<section class="section" id="numbers">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="sec-head__label"><span class="star star--sm"></span>Инфографика</span>
+      <h2>Цифры операции</h2>
+      <p>Масштаб «Багратиона» сопоставим с крупнейшими сражениями Второй мировой войны. Ниже — ключевые показатели.</p>
+      <div class="sec-head__rule"></div>
+    </div>
+    <div class="num-grid" id="numGrid"><!-- карточки генерируются из данных --></div>
+  </div>
+</section>
+
+<!-- ======================= КРАТКО ОБ ОПЕРАЦИИ ======================= -->
+<section class="section bg-alt" id="about">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="sec-head__label"><span class="star star--sm"></span>Справка</span>
+      <h2>Почему «Багратион» изменил ход войны</h2>
+      <div class="sec-head__rule"></div>
+    </div>
+    <div class="mem-grid">
+      <div class="mem-text reveal">
+        <p>Наступление началось 23 июня 1944 года — на следующий день после третьей годовщины начала войны.
+        Удары наносили четыре фронта: <b>1-й Прибалтийский</b> (И. Х. Баграмян), <b>3-й Белорусский</b> (И. Д. Черняховский),
+        <b>2-й Белорусский</b> (Г. Ф. Захаров) и <b>1-й Белорусский</b> (К. К. Рокоссовский). Координировали действия
+        представители Ставки Г. К. Жуков и А. М. Василевский.</p>
+        <p>Новаторством стал «двойной удар» Рокоссовского на бобруйском направлении: вместо одного главного удара
+        фронт наносил два одновременно, что лишало противника возможности манёвра резервами.</p>
+      </div>
+      <div class="mem-text reveal">
+        <p>Огромную роль сыграли партизаны. В ночь на 20 июня 1944 года началась «рельсовая война»: были подорваны
+        десятки тысяч рельсов, парализовавшие переброску немецких резервов. Партизанские гарнизоны передавали фронтам
+        разведданные о системе обороны противника.</p>
+        <p>Итог: группа армий «Центр» перестала существовать как единое объединение, Красная Армия вышла к государственной
+        границе СССР и в Восточную Пруссию. 17 июля 1944 года по Москве прошли колонны около 57 тысяч пленных немецких
+        солдат и офицеров — «парад побеждённых».</p>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ======================= ДОПОЛНИ КАРТУ ======================= -->
+<section class="section" id="add-city">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="sec-head__label"><span class="star star--sm"></span>Соавтор проекта</span>
+      <h2>Дополните карту своим городом</h2>
+      <p>Ваш населённый пункт тоже был освобождён летом 1944 года? Заполните карточку — встроенный
+         модуль проверки сверит данные с исторической базой, найдёт ошибки, исправит оформление
+         и добавит метку на карту в едином стиле проекта. Такие точки отмечаются отдельным знаком
+         и в хронологическую ленту операции не включаются.</p>
+      <div class="sec-head__rule"></div>
+    </div>
+
+    <div class="ac-wrap">
+      <!-- ФОРМА -->
+      <form class="ac-form reveal" id="acForm" autocomplete="off">
+        <div class="ac-editbar" id="acEditBar">
+          <span>✎ Вы редактируете карточку <b id="acEditName">—</b>. Изменения увидят все.</span>
+          <button type="button" id="acEditCancel">Отменить</button>
+        </div>
+        <div class="ac-field">
+          <label for="acName">Название населённого пункта <i>обязательно</i></label>
+          <input class="ac-input" id="acName" type="text" placeholder="Например: Слуцк" maxlength="60">
+        </div>
+
+        <div class="ac-field">
+          <label for="acDate">Дата освобождения <i>любой формат: 30 июня 1944 или 30.06.1944</i></label>
+          <input class="ac-input" id="acDate" type="text" placeholder="30 июня 1944" maxlength="40">
+        </div>
+
+        <div class="ac-field">
+          <label>Координаты <i>широта и долгота в градусах</i></label>
+          <div class="ac-row">
+            <input class="ac-input" id="acLat" type="text" inputmode="decimal" placeholder="Широта · 53.0272">
+            <input class="ac-input" id="acLon" type="text" inputmode="decimal" placeholder="Долгота · 27.5591">
+          </div>
+          <div class="ac-actions" style="margin-top:10px">
+            <button class="ac-mini" type="button" id="acPick">📍 Указать точку на карте</button>
+          </div>
+        </div>
+
+        <div class="ac-field">
+          <label for="acLib">Освобождение <i><span id="acLibCount">0</span> / рекомендуется 150–600</i></label>
+          <textarea class="ac-area" id="acLib" placeholder="Как проходило освобождение: какие войска, какие бои, важные факты и имена. 2–4 предложения."></textarea>
+        </div>
+
+        <div class="ac-field">
+          <label for="acInfo">О городе <i><span id="acInfoCount">0</span> / рекомендуется 120–500</i></label>
+          <textarea class="ac-area" id="acInfo" placeholder="Историческая справка: когда основан, чем известен, что сохранилось. 2–3 предложения."></textarea>
+        </div>
+
+        <div class="ac-field">
+          <label for="acAuthor">Автор дополнения <i>необязательно</i></label>
+          <input class="ac-input" id="acAuthor" type="text" placeholder="Имя, школа, класс" maxlength="60">
+        </div>
+
+        <div class="ac-actions">
+          <button class="btn btn--solid" type="submit" id="acSubmit">Проверить и добавить</button>
+          <button class="ac-mini" type="button" id="acDemo">Заполнить примером</button>
+          <button class="ac-mini" type="button" id="acClear">Очистить</button>
+        </div>
+      </form>
+
+      <!-- ОТЧЁТ ПРОВЕРКИ -->
+      <aside class="ac-report reveal">
+        <div class="ac-report__head">
+          <div class="ac-robot">⌬</div>
+          <h3>Модуль проверки</h3>
+        </div>
+
+        <div id="acIdle" class="ac-idle">
+          Заполните карточку и нажмите «Проверить и добавить».<br><br>
+          Модуль сверит дату и координаты с базой из 30 освобождённых городов Беларуси,
+          проверит объём и стиль текста, исправит типографику и оформит карточку
+          так же, как у исторических меток.
+        </div>
+
+        <div id="acResult" hidden>
+          <div class="ac-score">
+            <div class="ac-score__bar"><div class="ac-score__fill" id="acScoreFill"></div></div>
+            <div class="ac-score__txt"><span>Качество карточки</span><b id="acScoreTxt">0%</b></div>
+          </div>
+          <ul class="ac-list" id="acList"></ul>
+        </div>
+
+        <div class="ac-cloud ac-cloud--off" id="acCloud">
+          <i></i><span id="acCloudTxt">Проверяю связь…</span>
+          <button type="button" id="acCloudBtn" data-dev>Настроить</button>
+        </div>
+
+        <div class="ac-saved">
+          <h4>Дополнения на карте</h4>
+          <div class="ac-tags" id="acTags"></div>
+          <div class="ac-share" data-dev>
+            <button class="ac-mini" type="button" id="acPublish">⬆ Код для публикации</button>
+            <button class="ac-mini" type="button" id="acImport">⬇ Импорт кода / ссылки</button>
+          </div>
+        </div>
+
+        <p class="ac-note">Карточка проходит автоматическую проверку: сверяются дата, координаты
+          и объём текста. Свои дополнения отмечены значком ✎ — их можно изменить, удалить
+          или перетащить метку на карте в нужное место. Дополнения не входят
+          в хронологическую ленту операции.</p>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= ФУТЕР ======================= -->
+<footer class="footer">
+  <div class="footer__grid">
+    <div>
+      <h4>О проекте</h4>
+      <p>Проект создан для Республиканского конкурса компьютерных разработок патриотической
+      направленности <b>«ПАТРИОТ.by»</b>, номинация «Сайт».</p>
+      <p style="margin-top:10px">Год создания: <b style="color:#c9a227">2026</b></p>
+
+      <div class="foot-cta">
+        <span class="star star--sm star--gold"></span>
+        <div>
+          <b>Карта пополняется вместе с вами</b>
+          <p>Ваш город или посёлок тоже освобождали летом 1944 года? Добавьте карточку —
+             после проверки данных метка появится на общей карте проекта.</p>
+          <button class="btn" type="button" data-scroll="#add-city">Дополнить карту</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h4>Разделы</h4>
+      <ul>
+        <li><a href="#map-section">Интерактивная карта</a></li>
+        <li><a href="#timeline-section">Хронология наступления</a></li>
+        <li><a href="#memorial">Мемориал «Багратион»</a></li>
+        <li><a href="#numbers">Цифры операции</a></li>
+        <li><a href="#add-city">Дополнить карту</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Источники</h4>
+      <ul>
+        <li>Белорусская энциклопедия: «Беларусь в годы Великой Отечественной войны»</li>
+        <li>Материалы Белорусского государственного музея истории Великой Отечественной войны</li>
+        <li>Архивные материалы ОБД «Память народа» (условная ссылка)</li>
+        <li>Картографическая подложка: OpenStreetMap (© участники проекта)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer__bottom">
+    <span>© 2026 · Операция «Багратион» — интерактивная карта освобождения Беларуси</span>
+    <span>Вечная память освободителям ★</span>
+  </div>
+</footer>
+
+<button class="to-top" id="toTop" aria-label="Наверх">▲</button>
+
+<!-- ======================= ЧАТ-БОТ ======================= -->
+<button class="chat-fab" id="chatFab" aria-label="Открыть чат с сапёром Громовым">
+  <span class="star star--gold" aria-hidden="true"></span>
+  <span class="chat-fab__badge">Сапёр Громов · спросите меня</span>
+</button>
+
+<section class="chat" id="chat" role="dialog" aria-label="Чат-экскурсовод по операции Багратион">
+  <header class="chat__head">
+    <!-- Аватар собеседника: боец в каске СШ-40, нарисован кодом (SVG) -->
+    <div class="chat__ava">
+      <svg class="soldier" viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M9 62c1-12 10-18 23-18s22 6 23 18z" fill="#44551f"/>
+        <path d="M26 44l6 9 6-9z" fill="#394718"/>
+        <rect x="27" y="36" width="10" height="11" rx="3.5" fill="#d7a173"/>
+        <ellipse cx="32" cy="30" rx="11.5" ry="12.5" fill="#eaba8b"/>
+        <circle cx="20.6" cy="31" r="2.4" fill="#e0ad7e"/>
+        <circle cx="43.4" cy="31" r="2.4" fill="#e0ad7e"/>
+        <g class="soldier__helmet">
+          <path d="M17 28c0-9.5 6.4-16.5 15-16.5S47 18.5 47 28c0 1.6-.9 2.6-2.4 2.6H19.4C17.9 30.6 17 29.6 17 28z" fill="#5c6d2f"/>
+          <path d="M17 28c0-9.5 6.4-16.5 15-16.5 1.9 0 3.7.3 5.3 1-6.5 1.7-11.1 8-11.1 15.5 0 .9.1 1.8.3 2.6h-7.1C17.9 30.6 17 29.6 17 28z" fill="#6d8038" opacity=".5"/>
+          <ellipse cx="32" cy="29.6" rx="17.5" ry="3.6" fill="#4a5d23"/>
+          <polygon class="soldier__star" points="32,17 33.1,20 36.3,20.1 33.8,22.1 34.6,25.1 32,23.4 29.4,25.1 30.2,22.1 27.7,20.1 30.9,20" fill="#c1272d"/>
+        </g>
+        <g class="soldier__eyes">
+          <circle cx="27.5" cy="33.2" r="1.7" fill="#2f2a26"/>
+          <circle cx="36.5" cy="33.2" r="1.7" fill="#2f2a26"/>
+        </g>
+        <path d="M28.5 38.6q3.5 2.6 7 0" stroke="#a9693d" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div>
+      <div class="chat__title">Сапёр Пётр Громов</div>
+      <div class="chat__status"><i></i>В строю · 65-я армия, лето 1944</div>
+    </div>
+    <button class="chat__close" id="chatClose" aria-label="Закрыть чат">✕</button>
+  </header>
+
+  <div class="chat__log" id="chatLog" aria-live="polite"></div>
+
+  <div class="chat__chips" id="chatChips"></div>
+
+  <form class="chat__form" id="chatForm" autocomplete="off">
+    <input class="chat__input" id="chatInput" type="text" placeholder="Задайте вопрос об операции…" aria-label="Ваш вопрос">
+    <button class="chat__send" type="submit" aria-label="Отправить">➤</button>
+  </form>
+</section>
+
+<!-- Публикация / импорт дополнений -->
+<div class="ac-modal" id="acModal">
+  <div class="ac-modal__box">
+    <h3 id="acModalTitle">Код для публикации</h3>
+    <p class="ac-modal__sub" id="acModalSub"></p>
+    <ol class="ac-modal__steps" id="acModalSteps"></ol>
+    <textarea class="ac-code" id="acModalCode" spellcheck="false"></textarea>
+    <div class="ac-modal__act">
+      <button class="btn btn--solid" id="acModalMain">Скопировать</button>
+      <button class="btn btn--ghost" id="acModalClose">Закрыть</button>
+    </div>
+  </div>
+</div>
+<div class="ac-toast" id="acToast"></div>
+
+<!-- Просмотр фотографий мемориала во весь экран -->
+<div class="lightbox" id="lightbox" role="dialog" aria-label="Просмотр фотографии">
+  <button class="lightbox__close" id="lbClose" aria-label="Закрыть">✕</button>
+  <div>
+    <img id="lbImg" src="" alt="Фотография мемориального комплекса">
+    <div class="lightbox__cap" id="lbCap"></div>
+  </div>
+</div>
+
+<!-- Сообщение, если файл script.js не найден -->
+<div class="js-error" id="jsError">
+  <h4>★ Файл script.js не найден</h4>
+  <p>Страница открылась, но вся интерактивная часть (карта, хронология, цифры, чат)
+     не запустилась — браузер не нашёл файл <code>script.js</code>.</p>
+  <p><b>Что проверить:</b><br>
+     1. Файлы <code>index.html</code>, <code>style.css</code> и <code>script.js</code>
+        лежат в <b>одной папке</b>.<br>
+     2. Имя файла — точно <code>script.js</code>, без «(1)» и заглавных букв.<br>
+     3. Файл сохранён: в VS Code нажмите <code>Ctrl+S</code>.<br>
+     4. Обновите страницу сочетанием <code>Ctrl+F5</code>.</p>
+  <button type="button" onclick="document.getElementById('jsError').classList.remove('show')">Понятно, скрыть</button>
+</div>
+
+<!-- ЛОГИКА ПРОЕКТА — файл script.js в той же папке.
+     Подключён в самом конце: к этому моменту вся разметка уже загружена. -->
+<script src="script.js"></script>
+</body>
+</html>
